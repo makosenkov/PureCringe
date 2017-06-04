@@ -20,6 +20,7 @@ public class PureCringe extends ApplicationAdapter {
     private Box2DDebugRenderer b2dr;
     private World world;
 
+    private NewContactListener contactListener;
     private Body player;
     private Body startBox;
     private float time;
@@ -34,10 +35,12 @@ public class PureCringe extends ApplicationAdapter {
         camera.setToOrtho(false, w / 2, h / 2);
 
         world = new World(new Vector2(0, -9.8f), false);
+        contactListener = new NewContactListener();
+        world.setContactListener(contactListener);
         b2dr = new Box2DDebugRenderer();
 
-        player = createBox(8, 10, 32, 32, false);
-        startBox = createBox(8, 0, 64, 16, true);
+        player = createBox(8, 10, 3, 10, false, "PLAYER");
+        startBox = createBox(8, 0, 64, 16, true, "BOX");
 
         time = -3;
     }
@@ -45,10 +48,11 @@ public class PureCringe extends ApplicationAdapter {
     @Override
     public void render() {
         update(Gdx.graphics.getDeltaTime());
-        Gdx.gl.glClearColor(0.9f, 0, 0.5f, 1);
+        Gdx.gl.glClearColor(0.5f, 0, 0.5f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         b2dr.render(world, camera.combined.scl(ppm));
+        if (contactListener.youLose) Gdx.app.exit();
     }
 
     @Override
@@ -69,20 +73,22 @@ public class PureCringe extends ApplicationAdapter {
         spawnBox(delta);
         inputUpdate(delta);
         cameraUpdate(delta);
+
+
     }
 
     public void inputUpdate(float delta) {
         int horizontalForce = 0;
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.LEFT) && player.getPosition().x * ppm > -150) {
             horizontalForce = -1;
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT) && player.getPosition().x * ppm < 150) {
             horizontalForce = 1;
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
             player.applyForceToCenter(0, 300, false);
         }
-        player.setLinearVelocity(horizontalForce * 5, player.getLinearVelocity().y);
+        player.setLinearVelocity(horizontalForce * 10, player.getLinearVelocity().y);
         if (player.getLinearVelocity().y < -10) player.setLinearVelocity(player.getLinearVelocity().x, -10);
     }
 
@@ -96,13 +102,13 @@ public class PureCringe extends ApplicationAdapter {
     }
 
     public void spawnBox(float delta) {
-        if (time > 0.8f) {
-            createBox(MathUtils.random(6) * ppm, (player.getPosition().y * ppm - 600), 32, 16, true);
+        if (time > 0.6f) {
+            createBox(MathUtils.random(-150, 150), (player.getPosition().y * ppm - 600), 5, 500, true, "OBSTACLE");
             time = 0;
         }
     }
 
-    public Body createBox(float x, float y, int width, int height, boolean isStatic) {
+    public Body createBox(float x, float y, int width, int height, boolean isStatic, String key) {
         Body pBody;
         BodyDef def = new BodyDef();
 
@@ -115,7 +121,7 @@ public class PureCringe extends ApplicationAdapter {
 
         PolygonShape shape = new PolygonShape();
         shape.setAsBox(width / 2 / ppm, height / 2 / ppm);
-        pBody.createFixture(shape, 1.0f);
+        pBody.createFixture(shape, 1.0f).setUserData(key);
         shape.dispose();
         return pBody;
     }
